@@ -1,0 +1,4 @@
+include adlib.h
+include dbopl.h
+include dosbox.h
+include demo.py
