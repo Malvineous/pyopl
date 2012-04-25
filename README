@@ -1,5 +1,5 @@
 PyOPL: OPL2/3 emulation for Python
-Copyright 2011 Adam Nielsen <malvineous@shikadi.net>
+Copyright 2011-2012 Adam Nielsen <malvineous@shikadi.net>
 http://www.github.com/Malvineous/pyopl
 
 PyOPL is a simple wrapper around an OPL synthesiser so that it can be accessed

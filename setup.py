@@ -7,13 +7,13 @@ def read(fname):
 	return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='PyOPL',
-	version='1.0',
+	version='1.1',
 	description='OPL2/3 Adlib emulation',
 	author='Adam Nielsen',
 	author_email='malvineous@shikadi.net',
 	url='http://www.github.com/Malvineous/pyopl',
 	license='GPL',
-	keywords='Adlib FM OPL OPL2 OPL3 YM3182',
+	keywords='Adlib FM OPL OPL2 OPL3 YM3812 YMF262',
 	long_description=read('README'),
 	classifiers=[
 		'Development Status :: 5 - Production/Stable',

@@ -1,7 +1,7 @@
 /*
  * pyopl.cpp - Main OPL wrapper.
  *
- * Copyright (C) 2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2011-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,24 +20,45 @@
 #include <cassert>
 #include "dbopl.h"
 
+// Size of each sample in bytes (2 == 16-bit)
+#define SAMPLE_SIZE 2
+
+// Volume amplication (0 == none, 1 == 2x, 2 == 4x)
+#define VOL_AMP 1
+
 class SampleHandler: public MixerChannel {
 	public:
 		Py_buffer pybuf;
+		uint8_t channels;
+
+		SampleHandler(uint8_t channels)
+			: channels(channels)
+		{
+		}
+
+		virtual ~SampleHandler()
+		{
+		}
 
 		virtual void AddSamples_m32(Bitu samples, Bit32s *buffer)
 		{
-			// Convert samples from mono s32 to s16
+			// Convert samples from mono s32 to stereo s16
 			int16_t *out = (int16_t *)this->pybuf.buf;
-			for (int i = 0; i < samples; i++) {
-				*out++ = buffer[i];
+			for (unsigned int i = 0; i < samples; i++) {
+				*out++ = buffer[i] << VOL_AMP;
+				if (channels == 2) *out++ = buffer[i] << VOL_AMP;
 			}
 			return;
 		}
 
 		virtual void AddSamples_s32(Bitu samples, Bit32s *buffer)
 		{
-			// Convert samples from stereo s32 to s16
-			printf("TODO: Stereo samples are not yet implemented!\n");
+			// Convert samples from stereo s32 to stereo s16
+			int16_t *out = (int16_t *)this->pybuf.buf;
+			for (unsigned int i = 0; i < samples; i++) {
+				*out++ = buffer[i*2] << VOL_AMP;
+				if (channels == 2) *out++ = buffer[i*2+1] << VOL_AMP;
+			}
 			return;
 		}
 };
@@ -55,8 +76,8 @@ PyObject *opl_writeReg(PyObject *self, PyObject *args, PyObject *keywds)
 	PyOPL *o = (PyOPL *)self;
 	static const char *kwlist[] = {"reg", "val", NULL};
 
-	uint8_t reg, val;
-	if (!PyArg_ParseTupleAndKeywords(args, keywds, "bb", (char **)kwlist, &reg, &val)) return NULL;
+	int reg, val;
+	if (!PyArg_ParseTupleAndKeywords(args, keywds, "ii", (char **)kwlist, &reg, &val)) return NULL;
 
 	o->opl->WriteReg(reg, val);
 
@@ -70,12 +91,17 @@ PyObject *opl_getSamples(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "w*", &o->sh->pybuf)) return NULL;
 
-	if (o->sh->pybuf.len > 512*2) {
-		PyErr_SetString(PyExc_ValueError, "buffer too large");
+	int samples = o->sh->pybuf.len / SAMPLE_SIZE / o->sh->channels;
+	if (samples > 512) {
+		PyErr_SetString(PyExc_ValueError, "buffer too large (must be 512 samples)");
+		return NULL;
+	}
+	if (samples < 512) {
+		PyErr_SetString(PyExc_ValueError, "buffer too small (must be 512 samples)");
 		return NULL;
 	}
 
-	o->opl->Generate(o->sh, o->sh->pybuf.len / 2);
+	o->opl->Generate(o->sh, samples);
 
 	PyBuffer_Release(&o->sh->pybuf); // won't use it any more
 
@@ -141,19 +167,24 @@ static PyTypeObject PyOPLType = {
 
 PyObject *opl_new(PyObject *self, PyObject *args, PyObject *keywds)
 {
-	static const char *kwlist[] = {"freq", "sampleSize", NULL};
+	static const char *kwlist[] = {"freq", "sampleSize", "channels", NULL};
 
 	unsigned int freq;
 	uint8_t sampleSize;
-	if (!PyArg_ParseTupleAndKeywords(args, keywds, "Ib", (char **)kwlist, &freq, &sampleSize)) return NULL;
-	if (sampleSize != 2) {
-		PyErr_SetString(PyExc_ValueError, "invalid sample size");
+	uint8_t channels;
+	if (!PyArg_ParseTupleAndKeywords(args, keywds, "Ibb", (char **)kwlist, &freq, &sampleSize, &channels)) return NULL;
+	if (sampleSize != SAMPLE_SIZE) {
+		PyErr_SetString(PyExc_ValueError, "invalid sample size (valid values: 2=16-bit)");
+		return NULL;
+	}
+	if ((channels != 1) && (channels != 2)) {
+		PyErr_SetString(PyExc_ValueError, "invalid channel count (valid values: 1=mono, 2=stereo)");
 		return NULL;
 	}
 
 	PyOPL *o = PyObject_New(PyOPL, &PyOPLType);
 	if (o) {
-		o->sh = new SampleHandler();
+		o->sh = new SampleHandler(channels);
 		o->opl = new DBOPL::Handler();
 		o->opl->Init(freq);
 	}
