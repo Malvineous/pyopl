@@ -93,11 +93,11 @@ PyObject *opl_getSamples(PyObject *self, PyObject *args)
 
 	int samples = o->sh->pybuf.len / SAMPLE_SIZE / o->sh->channels;
 	if (samples > 512) {
-		PyErr_SetString(PyExc_ValueError, "buffer too large (must be 512 samples)");
+		PyErr_SetString(PyExc_ValueError, "buffer too large (max 512 samples)");
 		return NULL;
 	}
-	if (samples < 512) {
-		PyErr_SetString(PyExc_ValueError, "buffer too small (must be 512 samples)");
+	if (samples < 2) {
+		PyErr_SetString(PyExc_ValueError, "buffer too small (min 2 samples)");
 		return NULL;
 	}
 

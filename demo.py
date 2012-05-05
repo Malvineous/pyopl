@@ -37,8 +37,8 @@ sample_size = 2
 # synth is in OPL2 or OPL3 mode - it will always work.
 num_channels = 2
 
-# How many samples to synthesise at a time.  The DOSBox synth will only work
-# if this is set to 512.
+# How many samples to synthesise at a time.  Higher values will reduce CPU
+# usage but increase lag.
 synth_size = 512
 
 # An OPL helper class which handles the delay between notes and buffering
@@ -59,10 +59,10 @@ class OPLStream:
 
 	def wait(self, ticks):
 		# Rather than calculating the exact number of samples we need to generate,
-		# we just keep generating 512 samples at a time (as required by the DOSBox
-		# synth) until we've waited as close as possible to the requested delay.
+		# we just keep generating 512 samples at a time until we've waited as close
+		# as possible to the requested delay.
 		# This does mean we might wait for up to 511/freq samples too little (at
-		# 48kHz that's a worst-case of 1.06ms too short) but no human will notice
+		# 48kHz that's a worst-case of 10.6ms too short) but nobody should notice
 		# and it saves enough CPU time and complexity to be worthwhile.
 		self.delay += ticks * freq / self.ticksPerSecond
 		while self.delay > synth_size:
@@ -70,6 +70,28 @@ class OPLStream:
 			# We put the samples into self.buf which also updates self.pyaudio_buf
 			stream.write(self.pyaudio_buf)
 			self.delay -= synth_size
+
+	# This is an alternate way of calculating the delay.  It has slightly higher
+	# CPU usage but provides more accurate delays (+/- 0.04ms).
+	# To use it, rename the function to "wait" and rename the other "wait"
+	# function to something else.
+	def wait2(self, ticks):
+		# Figure out how many samples we need to get to obtain the delay
+		fill = ticks * freq / self.ticksPerSecond
+		tail = fill % synth_size
+		if tail:
+			buf_tail = bytearray(tail * sample_size * num_channels)
+		# Fill the buffer in 512-sample lots until full
+		cur = self.buf
+		while fill > 1: # DOSBox synth can't generate < 2 samples
+			if fill < synth_size:
+				# Resize the buffer for the last bit
+				cur = buf_tail
+			self.opl.getSamples(cur)
+			pyaudio_buf = buffer(cur)
+			stream.write(pyaudio_buf)
+			fill -= synth_size
+
 
 ## Main code begins ##
 
@@ -104,6 +126,10 @@ stream = audio.open(
 	rate = freq,
 	output = True)
 
+# At this point we have to hope PyAudio has got us the audio format we
+# requested.  It doesn't always, but it lacks functions for us to check.
+# This means we could end up outputting data in the wrong format...
+
 # Set up the OPL synth
 oplStream = OPLStream(freq, ticksPerSecond)
 
@@ -133,6 +159,7 @@ try:
 		## First, override the panning register to make the sound come out of both
 		## channels.  This is required if playing OPL2 data, as these registers are
 		## unused on the OPL2 so are usually set to zero, silencing the channel.
+		## You won't need this if you're playing native OPL3 data.
 		#if reg & 0xC0 == 0xC0:
 		#	val = val | 0x30
 		## Write the same value to the same register on the upper register set
