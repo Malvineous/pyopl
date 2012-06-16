@@ -24,5 +24,5 @@ setup(name='PyOPL',
 		'Topic :: Multimedia :: Sound/Audio :: Sound Synthesis',
 	],
 	platforms=['Any'],
-	ext_modules=[Extension('pyopl', ['pyopl.cpp', 'dbopl.cpp'])],
+	ext_modules=[Extension('pyopl', ['pyopl.cpp', 'dbopl.cpp'], depends=['dosbox.h', 'dbopl.h', 'adlib.h'])],
 )
