@@ -26,6 +26,12 @@
 // Volume amplication (0 == none, 1 == 2x, 2 == 4x)
 #define VOL_AMP 1
 
+// Clipping function to prevent integer wraparound after amplification
+#define SAMP_BITS (SAMPLE_SIZE << 3)
+#define SAMP_MAX ((1 << (SAMP_BITS-1)) - 1)
+#define SAMP_MIN -((1 << (SAMP_BITS-1)))
+#define CLIP(v) (((v) > SAMP_MAX) ? SAMP_MAX : (((v) < SAMP_MIN) ? SAMP_MIN : (v)))
+
 class SampleHandler: public MixerChannel {
 	public:
 		Py_buffer pybuf;
@@ -45,8 +51,9 @@ class SampleHandler: public MixerChannel {
 			// Convert samples from mono s32 to stereo s16
 			int16_t *out = (int16_t *)this->pybuf.buf;
 			for (unsigned int i = 0; i < samples; i++) {
-				*out++ = buffer[i] << VOL_AMP;
-				if (channels == 2) *out++ = buffer[i] << VOL_AMP;
+				Bit32s v = buffer[i] << VOL_AMP;
+				*out++ = CLIP(v);
+				if (channels == 2) *out++ = CLIP(v);
 			}
 			return;
 		}
@@ -56,8 +63,12 @@ class SampleHandler: public MixerChannel {
 			// Convert samples from stereo s32 to stereo s16
 			int16_t *out = (int16_t *)this->pybuf.buf;
 			for (unsigned int i = 0; i < samples; i++) {
-				*out++ = buffer[i*2] << VOL_AMP;
-				if (channels == 2) *out++ = buffer[i*2+1] << VOL_AMP;
+				Bit32s v = buffer[i*2] << VOL_AMP;
+				*out++ = CLIP(v);
+				if (channels == 2) {
+					v = buffer[i*2+1] << VOL_AMP;
+					*out++ = CLIP(v);
+				}
 			}
 			return;
 		}
