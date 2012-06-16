@@ -7,7 +7,7 @@ def read(fname):
 	return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='PyOPL',
-	version='1.2',
+	version='1.3',
 	description='OPL2/3 Adlib emulation',
 	author='Adam Nielsen',
 	author_email='malvineous@shikadi.net',
