@@ -176,7 +176,7 @@ try:
 		#oplStream.writeReg(0x100 + reg, val)
 
 		# Show something that moves to be a bit more interesting
-		if reg & 0xB0:
+		if reg & 0xB0 == 0xB0:
 			c = reg & 0x0F
 			if c < 9:
 				channelActive[c] = val & 0x20
