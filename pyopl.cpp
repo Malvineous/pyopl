@@ -16,9 +16,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <cassert>
 #include "dbopl.h"
+
+#if PY_MAJOR_VERSION >= 3
+#define PyString_FromString PyUnicode_FromString
+#define ERROR_INIT NULL
+#else
+#define ERROR_INIT
+#endif
 
 // Size of each sample in bytes (2 == 16-bit)
 #define SAMPLE_SIZE 2
@@ -92,8 +100,7 @@ PyObject *opl_writeReg(PyObject *self, PyObject *args, PyObject *keywds)
 
 	o->opl->WriteReg(reg, val);
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 PyObject *opl_getSamples(PyObject *self, PyObject *args)
@@ -116,8 +123,7 @@ PyObject *opl_getSamples(PyObject *self, PyObject *args)
 
 	PyBuffer_Release(&o->sh->pybuf); // won't use it any more
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 static PyMethodDef opl_methods[] = {
@@ -135,48 +141,12 @@ void opl_dealloc(PyObject *self)
 	return;
 }
 
-PyObject *opl_getattr(PyObject *self, char *attrname)
-{
-	return Py_FindMethod(opl_methods, self, attrname);
-}
-
-int opl_setattr(PyObject *self, char *attrname, PyObject *value)
-{
-	PyErr_SetString(PyExc_AttributeError, attrname);
-	return -1;
-}
-
 PyObject *opl_repr(PyObject *self)
 {
 	return PyString_FromString("<OPL>");
 }
 
-static PyTypeObject PyOPLType = {
-	PyObject_HEAD_INIT(&PyType_Type)
-	0,              // ob_size
-	"pyopl",        // tp_name
-	sizeof(PyOPL),  // tp_basicsize
-	0,              // tp_itemsize
-
-	opl_dealloc,    // tp_dealloc
-	0,              // tp_print
-	opl_getattr,    // tp_getattr
-	opl_setattr,    // tp_setattr
-	0,              // tp_compare
-	opl_repr,       // tp_repr
-	0,              // tp_as_number
-	0,              // tp_as_sequence
-	0,              // tp_as_mapping
-	0,              // tp_hash
-	0,              // tp_call
-	0,              // tp_str
-	0,              // tp_getattro
-	0,              // tp_setattro
-	0,              // tp_as_buffer
-	Py_TPFLAGS_DEFAULT, // tp_flags
-};
-
-PyObject *opl_new(PyObject *self, PyObject *args, PyObject *keywds)
+static PyObject *opl_new(PyTypeObject *type, PyObject *args, PyObject *keywds)
 {
 	static const char *kwlist[] = {"freq", "sampleSize", "channels", NULL};
 
@@ -193,7 +163,7 @@ PyObject *opl_new(PyObject *self, PyObject *args, PyObject *keywds)
 		return NULL;
 	}
 
-	PyOPL *o = PyObject_New(PyOPL, &PyOPLType);
+	PyOPL *o = (PyOPL *)type->tp_alloc(type, 0);
 	if (o) {
 		o->sh = new SampleHandler(channels);
 		o->opl = new DBOPL::Handler();
@@ -202,13 +172,92 @@ PyObject *opl_new(PyObject *self, PyObject *args, PyObject *keywds)
 	return (PyObject *)o;
 }
 
+static PyTypeObject PyOPLType = {
+	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	"pyopl.opl",    // tp_name
+	sizeof(PyOPL),  // tp_basicsize
+	0,              // tp_itemsize
+	opl_dealloc,    // tp_dealloc
+	0,              // tp_print
+	0,              // tp_getattr
+	0,              // tp_setattr
+	0,              // tp_as_async
+	opl_repr,       // tp_repr
+	0,              // tp_as_number
+	0,              // tp_as_sequence
+	0,              // tp_as_mapping
+	0,              // tp_hash
+	0,              // tp_call
+	0,              // tp_str
+	0,              // tp_getattro
+	0,              // tp_setattro
+	0,              // tp_as_buffer
+	Py_TPFLAGS_DEFAULT, // tp_flags
+	"OPL emulator", // tp_doc
+	0,              // tp_traverse
+	0,              // tp_clear
+	0,              // tp_richcompare
+	0,              // tp_weaklistoffset
+	0,              // tp_iter
+	0,              // tp_iternext
+	opl_methods,    // tp_methods
+	0,              // tp_members
+	0,              // tp_getset
+	0,              // tp_base
+	NULL,           // tp_dict
+	0,              // tp_descr_get
+	0,              // tp_descr_set
+	0,              // tp_dictoffset
+	0,              // tp_init
+	0,              // tp_alloc
+	opl_new,        // tp_new
+};
+
 static PyMethodDef methods[] = {
-	{"opl", (PyCFunction)opl_new, METH_VARARGS | METH_KEYWORDS, "Create a new OPL emulator instance."},
 	{NULL, NULL, 0, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef pyoplmodule = {
+	PyModuleDef_HEAD_INIT, // m_base
+	"pyopl",        // m_name
+	NULL,           // m_doc
+	-1,             // m_size
+	methods,        // m_methods
+	NULL,           // m_slots
+	NULL,           // m_traverse
+	NULL,           // m_clear
+	NULL,           // m_free
+};
+#endif
+
 PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit_pyopl(void)
+#else
 initpyopl(void)
+#endif
 {
-    (void) Py_InitModule("pyopl", methods);
+	if (PyType_Ready(&PyOPLType) < 0)
+	{
+		return ERROR_INIT;
+	}
+	PyObject *module;
+#if PY_MAJOR_VERSION >= 3
+	module = PyModule_Create(&pyoplmodule);
+#else
+	module = Py_InitModule("pyopl", methods);
+#endif
+	if (!module) return ERROR_INIT;
+
+	Py_INCREF(&PyOPLType);
+	if (PyModule_AddObject(module, "opl", (PyObject*)&PyOPLType) < 0)
+	{
+		Py_DECREF(&PyOPLType);
+		Py_DECREF(module);
+		return ERROR_INIT;
+	}
+#if PY_MAJOR_VERSION >= 3
+	return module;
+#endif
 }
