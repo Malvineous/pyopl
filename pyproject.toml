@@ -28,3 +28,6 @@ classifiers = [
 
 [project.urls]
 Repository = "http://www.github.com/Malvineous/pyopl"
+
+[tool.cibuildwheel]
+skip = ["cp36-*", "cp37-*"]
