@@ -7,7 +7,7 @@ name = "PyOPL"
 version = "1.4"
 description = "OPL2/3 Adlib emulation"
 readme = "README.md"
-requires-python = ">=2.7"
+requires-python = ">=3.8"
 license = { file = "COPYING" }
 authors = [
     { name = "Adam Nielsen", email = "malvineous@shikadi.net" },
@@ -28,6 +28,3 @@ classifiers = [
 
 [project.urls]
 Repository = "http://www.github.com/Malvineous/pyopl"
-
-[tool.cibuildwheel]
-skip = ["cp36-*", "cp37-*"]

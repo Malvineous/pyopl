@@ -21,12 +21,8 @@
 #include <cassert>
 #include "dbopl.h"
 
-#if PY_MAJOR_VERSION >= 3
 #define PyString_FromString PyUnicode_FromString
 #define ERROR_INIT NULL
-#else
-#define ERROR_INIT
-#endif
 
 // Size of each sample in bytes (2 == 16-bit)
 #define SAMPLE_SIZE 2
@@ -217,7 +213,6 @@ static PyMethodDef methods[] = {
 	{NULL, NULL, 0, NULL}
 };
 
-#if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef pyoplmodule = {
 	PyModuleDef_HEAD_INIT, // m_base
 	"pyopl",        // m_name
@@ -229,25 +224,16 @@ static struct PyModuleDef pyoplmodule = {
 	NULL,           // m_clear
 	NULL,           // m_free
 };
-#endif
 
 PyMODINIT_FUNC
-#if PY_MAJOR_VERSION >= 3
 PyInit_pyopl(void)
-#else
-initpyopl(void)
-#endif
 {
 	if (PyType_Ready(&PyOPLType) < 0)
 	{
 		return ERROR_INIT;
 	}
 	PyObject *module;
-#if PY_MAJOR_VERSION >= 3
 	module = PyModule_Create(&pyoplmodule);
-#else
-	module = Py_InitModule("pyopl", methods);
-#endif
 	if (!module) return ERROR_INIT;
 
 	Py_INCREF(&PyOPLType);
@@ -257,7 +243,5 @@ initpyopl(void)
 		Py_DECREF(module);
 		return ERROR_INIT;
 	}
-#if PY_MAJOR_VERSION >= 3
 	return module;
-#endif
 }
