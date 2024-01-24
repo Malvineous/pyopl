@@ -37,7 +37,7 @@ class opl:
         :return: None
         """
 
-    def getSamples(self, buffer) -> None:
+    def getSamples(self, buffer: bytearray) -> None:
         """Fills the supplied buffer with audio samples.
 
         :param buffer: The buffer.  Note that this is a positional argument, not keyword.
