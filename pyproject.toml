@@ -8,10 +8,10 @@ version = "2.0.dev2"
 description = "OPL2/3 Adlib emulation"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "COPYING" }
+license = { text = "GPL-3.0-only" }
 authors = [
     { name = "Adam Nielsen", email = "malvineous@shikadi.net" },
-    { name = "Adam Biser" }
+    { name = "Adam Biser", email = "adambiser@gmail.com" }
 ]
 maintainers = [
     { name = "Laurence Dougal Myers", email = "laurencedougalmyers@gmail.com" }
@@ -20,7 +20,7 @@ keywords = ["Adlib", "FM", "OPL", "OPL2", "OPL3", "YM3812", "YMF262"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: C++",
     "Topic :: Multimedia :: Sound/Audio :: Sound Synthesis"
