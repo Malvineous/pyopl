@@ -51,6 +51,3 @@ jobs:
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@release/v1
-        # TODO: remove this once we want to publish to the real PyPI
-        with:
-          repository-url: https://test.pypi.org/legacy/
