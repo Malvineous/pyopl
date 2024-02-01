@@ -28,3 +28,6 @@ classifiers = [
 
 [project.urls]
 Repository = "http://www.github.com/Malvineous/pyopl"
+
+[tool.cibuildwheel]
+test-command = "python -m unittest {project}/tests/pyopl_test.py"
