@@ -30,4 +30,15 @@ classifiers = [
 Repository = "http://www.github.com/Malvineous/pyopl"
 
 [tool.cibuildwheel]
-test-command = "python -m unittest {project}/tests/pyopl_test.py"
+test-command = [
+    "cd {project}",
+    "python -m unittest {project}/tests/pyopl_test.py"
+]
+
+[tool.cibuildwheel.windows]
+
+test-command = [
+    "D:",
+    "cd {project}",
+    "python -m unittest {project}/tests/pyopl_test.py"
+]

@@ -39,7 +39,7 @@ class DROInstructionType(Enum):
 class DROData:
 	def __init__(
 			self,
-			codemap: tuple[int, ...],
+			codemap: typing.Tuple[int, ...],
 			raw_data: array.array,
 			short_delay_code: int,
 			long_delay_code: int
@@ -50,9 +50,11 @@ class DROData:
 		self._long_delay_code = long_delay_code
 
 	def __iter__(self) -> typing.Iterator[
-		tuple[DROInstructionType.DELAY_MS, int] |
-		tuple[DROInstructionType.REGISTER, int, int]
-		]:
+		typing.Union[
+			typing.Tuple["DROInstructionType.DELAY_MS", int],
+			typing.Tuple["DROInstructionType.REGISTER", int, int]
+		]
+	]:
 		iterator = iter(self._raw_data)
 		try:
 			while True:
