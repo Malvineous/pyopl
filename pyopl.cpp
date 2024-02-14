@@ -21,12 +21,8 @@
 #include <cassert>
 #include "dbopl.h"
 
-#if PY_MAJOR_VERSION >= 3
 #define PyString_FromString PyUnicode_FromString
 #define ERROR_INIT NULL
-#else
-#define ERROR_INIT
-#endif
 
 // Size of each sample in bytes (2 == 16-bit)
 #define SAMPLE_SIZE 2
@@ -163,7 +159,9 @@ static PyObject *opl_new(PyTypeObject *type, PyObject *args, PyObject *keywds)
 		return NULL;
 	}
 
-	PyOPL *o = (PyOPL *)type->tp_alloc(type, 0);
+	// Static ABI doesn't allow calling type->tp_alloc.
+	// Just assume the default allocator is used, and call it directly.
+	PyOPL *o = (PyOPL *)PyType_GenericAlloc(type, 0);
 	if (o) {
 		o->sh = new SampleHandler(channels);
 		o->opl = new DBOPL::Handler();
@@ -172,52 +170,28 @@ static PyObject *opl_new(PyTypeObject *type, PyObject *args, PyObject *keywds)
 	return (PyObject *)o;
 }
 
-static PyTypeObject PyOPLType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
-	"pyopl.opl",    // tp_name
-	sizeof(PyOPL),  // tp_basicsize
-	0,              // tp_itemsize
-	opl_dealloc,    // tp_dealloc
-	0,              // tp_print
-	0,              // tp_getattr
-	0,              // tp_setattr
-	0,              // tp_as_async
-	opl_repr,       // tp_repr
-	0,              // tp_as_number
-	0,              // tp_as_sequence
-	0,              // tp_as_mapping
-	0,              // tp_hash
-	0,              // tp_call
-	0,              // tp_str
-	0,              // tp_getattro
-	0,              // tp_setattro
-	0,              // tp_as_buffer
-	Py_TPFLAGS_DEFAULT, // tp_flags
-	"OPL emulator", // tp_doc
-	0,              // tp_traverse
-	0,              // tp_clear
-	0,              // tp_richcompare
-	0,              // tp_weaklistoffset
-	0,              // tp_iter
-	0,              // tp_iternext
-	opl_methods,    // tp_methods
-	0,              // tp_members
-	0,              // tp_getset
-	0,              // tp_base
-	NULL,           // tp_dict
-	0,              // tp_descr_get
-	0,              // tp_descr_set
-	0,              // tp_dictoffset
-	0,              // tp_init
-	0,              // tp_alloc
-	opl_new,        // tp_new
+static PyType_Slot PyOPLType_spec_slots[] = {
+	{Py_tp_dealloc, (void*)opl_dealloc},
+	{Py_tp_repr, (void*)opl_repr},
+	{Py_tp_doc, (void*)"OPL emulator"},
+	{Py_tp_methods, (void*)opl_methods},
+	{Py_tp_new, (void*)opl_new},
+	{0, NULL},
+};
+
+// Must use a dynamic (heap) type in the Static ABI.
+static PyType_Spec PyOPLType_spec = {
+	"pyopl.opl",         // tp_name
+	sizeof(PyOPL),       // tp_basicsize
+	0,                   // tp_itemsize
+	Py_TPFLAGS_DEFAULT,  // tp_flags
+	PyOPLType_spec_slots // slots
 };
 
 static PyMethodDef methods[] = {
 	{NULL, NULL, 0, NULL}
 };
 
-#if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef pyoplmodule = {
 	PyModuleDef_HEAD_INIT, // m_base
 	"pyopl",        // m_name
@@ -229,35 +203,22 @@ static struct PyModuleDef pyoplmodule = {
 	NULL,           // m_clear
 	NULL,           // m_free
 };
-#endif
 
 PyMODINIT_FUNC
-#if PY_MAJOR_VERSION >= 3
 PyInit_pyopl(void)
-#else
-initpyopl(void)
-#endif
 {
-	if (PyType_Ready(&PyOPLType) < 0)
-	{
-		return ERROR_INIT;
-	}
 	PyObject *module;
-#if PY_MAJOR_VERSION >= 3
 	module = PyModule_Create(&pyoplmodule);
-#else
-	module = Py_InitModule("pyopl", methods);
-#endif
 	if (!module) return ERROR_INIT;
 
-	Py_INCREF(&PyOPLType);
-	if (PyModule_AddObject(module, "opl", (PyObject*)&PyOPLType) < 0)
+	static PyObject *PyOPLType = PyType_FromSpec(&PyOPLType_spec);
+
+	Py_INCREF(PyOPLType);
+	if (PyModule_AddObject(module, "opl", PyOPLType) < 0)
 	{
-		Py_DECREF(&PyOPLType);
+		Py_DECREF(PyOPLType);
 		Py_DECREF(module);
 		return ERROR_INIT;
 	}
-#if PY_MAJOR_VERSION >= 3
 	return module;
-#endif
 }

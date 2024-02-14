@@ -47,16 +47,9 @@ class OPLStream:
 		self.opl = pyopl.opl(freq, sampleSize=sample_size, channels=num_channels)
 		self.ticksPerSecond = ticksPerSecond
 		self.buf = bytearray(synth_size * sample_size * num_channels)
-		if sys.version_info[0] < 3:
-			# self.pyaudio_buf is a different data type but points to the same memory
-			# as self.buf, so changing one affects the other.  We put this in the
-			# constructor so we don't have to recreate it every time we process
-			# samples, which would eat up CPU time unnecessarily.
-			self.pyaudio_buf = buffer(self.buf)
-		else:
-			# Python 3 doesn't have Python 2's buffer() builtin and _portaudio doesn't work with memoryview,
-			# convert to bytes() as needed, which isn't as effecient.
-			OPLStream.pyaudio_buf = property(lambda self: bytes(self.buf))
+		# Python 3 doesn't have Python 2's buffer() builtin and _portaudio doesn't work with memoryview,
+		# convert to bytes() as needed, which isn't as efficient.
+		OPLStream.pyaudio_buf = property(lambda self: bytes(self.buf))
 		self.delay = 0
 
 	def writeReg(self, reg, value):
@@ -81,11 +74,6 @@ class OPLStream:
 	# To use it, rename the function to "wait" and rename the other "wait"
 	# function to something else.
 	def wait2(self, ticks):
-		# Python 3 doesn't have Python 2's buffer() builtin and _portaudio doesn't work with memoryview,
-		# convert to bytes() as needed, which isn't as effecient.
-		if sys.version_info[0] >= 3:
-			def buffer(value):
-				return bytes(value)
 		# Figure out how many samples we need to get to obtain the delay
 		fill = ticks * freq // self.ticksPerSecond
 		tail = fill % synth_size
@@ -98,7 +86,9 @@ class OPLStream:
 				# Resize the buffer for the last bit
 				cur = buf_tail
 			self.opl.getSamples(cur)
-			pyaudio_buf = buffer(cur)
+			# Python 3 doesn't have Python 2's buffer() builtin and _portaudio doesn't work with memoryview,
+			# convert to bytes() as needed, which isn't as efficient.
+			pyaudio_buf = bytes(cur)
 			stream.write(pyaudio_buf)
 			fill -= synth_size
 
